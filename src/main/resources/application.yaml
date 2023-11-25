@@ -1,0 +1,29 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+spring:
+  datasource:
+    #url: jdbc:mysql://fastglp.cfs2go2a1m4q.us-east-1.rds.amazonaws.com:3306/fastglp
+    url: jdbc:mysql://localhost:3307/fastglp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: admin
+    password: dp1_fastglp8954
+
+  jpa:
+    hibernate:
+      # create, create-drop, update, validate, none
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    show-sql: false
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: ERROR
+        type:
+          descriptor:
+            sql: ERROR

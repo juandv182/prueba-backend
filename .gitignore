@@ -31,4 +31,12 @@ build/
 
 ### VS Code ###
 .vscode/
-src/main/resources/public/
+
+### LOGS ###
+*.log
+
+### JSON ###
+*.json
+
+### PDFS ###
+*.pdf

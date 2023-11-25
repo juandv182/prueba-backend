@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>test-logs.log</file>
+        <append>false</append>
+        <encoder>
+            <pattern>%d{HH:mm:ss} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- Configuración del nivel de registro para Hibernate -->
+    <logger name="org.hibernate.SQL" level="ERROR"/>
+    <logger name="org.hibernate.type.descriptor.sql" level="ERROR"/>
+
+    <!-- Configuración del nivel de registro raíz -->
+    <root level="DEBUG">
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>

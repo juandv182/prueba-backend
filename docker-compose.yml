@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  app:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/fastglp?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=dp1_fastglp8954
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8080/api/actuator/health || exit 1" ]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 3600M
+
+  db:
+    image: mysql
+    environment:
+      MYSQL_DATABASE: fastglp
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: dp1_fastglp8954
+      MYSQL_ROOT_PASSWORD: 45sdfsf1uuid
+    command: --default-authentication-plugin=caching_sha2_password --max_allowed_packet=314572800 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s  # Intervalo entre intentos de comprobación
+      start_period: 30s  # Tiempo para dar a la base de datos antes de empezar a comprobar
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  db-data:
