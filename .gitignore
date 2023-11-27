@@ -35,8 +35,5 @@ build/
 ### LOGS ###
 *.log
 
-### JSON ###
-*.json
-
-### PDFS ###
-*.pdf
+### Archivos Generados ###
+src/generated/

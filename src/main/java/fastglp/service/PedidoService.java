@@ -28,6 +28,10 @@ public class PedidoService {
         return pedido.getId();
     }
 
+    public void guardarPedidos(List<Pedido> pedidos) {
+        pedidoRepository.saveAll(pedidos);
+    }
+
 
     public void actualizarPedido(Pedido pedido) {
         pedidoRepository.save(pedido);

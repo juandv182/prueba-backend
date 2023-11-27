@@ -34,12 +34,15 @@ public class PorcionPedido {
     private boolean asignado;
     private String cliente;
     private Date fechaLimite;
+    @JsonIgnore
+    @Transient
+    private static long idGenerator = 1L;
 
     public PorcionPedido(Pedido p, double glp) {
         this.pedido=p;
         assert glp<=p.getNotAssignedGLP();
         this.glp=glp;
-        this.id=p.getPorciones().stream().mapToLong(PorcionPedido::getId).max().orElse(-1)+1;
+        this.id=idGenerator++;
         p.getPorciones().add(this);
         p.setNotAssignedGLP(p.getNotAssignedGLP()-glp);
         this.cliente=p.getCliente();

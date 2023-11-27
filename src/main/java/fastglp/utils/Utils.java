@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Locale;
 import java.util.stream.IntStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -61,6 +62,22 @@ public class Utils {
         return byteArrayOutputStream.toString(StandardCharsets.UTF_8);
     }
 
+    public static int[] convertToUnsignedByteArray(byte[] data) {
+        int[] unsignedData = new int[data.length];
+        for (int i = 0; i < data.length; i++) {
+            unsignedData[i] = data[i] & 0xff; // Convierte a entero sin signo
+        }
+        return unsignedData;
+    }
+
+    public static String formatDouble(double value) {
+        if (value == (int) value) {
+            return String.format("%2d",(int) value);
+        } else {
+            return String.format(Locale.US, "%1.1f", value);
+        }
+    }
+
     public static Ciudad createCiudadOnly(){
         Ciudad mockCiudad = new Ciudad("SkyLines", 70, 50);
         for (long i = 1; i <= 2; i++) {
@@ -107,6 +124,20 @@ public class Utils {
     public static Ciudad createMockCiudad(int mes, int anio) {
         Ciudad mockCiudad = createCiudadOnly();
         llenarBloqueosPedidosFromFiles(mockCiudad,mes,anio);
+        setIDs(mockCiudad);
+        return mockCiudad;
+    }
+
+    public static Ciudad createMockCiudadInRange(int mesIni,int mesFin, int anio) {
+        Ciudad mockCiudad = createCiudadOnly();
+        for(int i=mesIni;i<=mesFin;i++){
+            llenarBloqueosPedidosFromFiles(mockCiudad,i,anio);
+        }
+        setIDs(mockCiudad);
+        return mockCiudad;
+    }
+
+    private static void setIDs(Ciudad mockCiudad) {
         //colocarles id a los camiones
         IntStream.range(0, mockCiudad.getCamiones().size()).forEach(i -> mockCiudad.getCamiones().get(i).setId((long) i));
         //colocarles id a los pedidos
@@ -115,7 +146,6 @@ public class Utils {
         IntStream.range(0, mockCiudad.getAlmacenes().size()).forEach(i -> mockCiudad.getAlmacenes().get(i).setId((long) i));
         //colocarles id a los bloqueos
         IntStream.range(0, mockCiudad.getBloqueos().size()).forEach(i -> mockCiudad.getBloqueos().get(i).setId((long) i));
-        return mockCiudad;
     }
 
     private static ArrayList<Pedido> leerPedidos(String nombreArchivo, Date fechaInicioMes) {

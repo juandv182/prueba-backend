@@ -10,9 +10,10 @@ public class CorsConfig implements WebMvcConfigurer{
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")  // Permite configurar CORS para todas las rutas
-                .allowedOrigins("http://localhost:3000", "http://localhost:3002")  // Permite sólo a localhost
+                .allowedOrigins("http://localhost:3000","https://inf226-981-4d.inf.pucp.edu.pe")
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
-                .allowedHeaders("Authorization", "Content-Type", "Accept")
+                //aceptar todos los headers
+                .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600L);  // Cache (tiempo en segundos) para la respuesta de pre-verificación
     }

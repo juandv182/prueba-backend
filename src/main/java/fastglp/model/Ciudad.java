@@ -191,7 +191,7 @@ public class Ciudad {
         ArrayList<Coordenada>vecinos=new ArrayList<>();
         Coordenada origen=nodo.getDestino();
         Date fecha=nodo.getFechaFin();
-        if (!libreDeBloqueos(origen, fecha) && (!first || prevCoordenada != null && !prevCoordenada.equals(origen))){
+        if (!libreDeBloqueos(origen, fecha) && (!first || (prevCoordenada != null && !prevCoordenada.equals(origen)))){
             if(first){
                 vecinos.add(prevCoordenada);
             }
@@ -372,23 +372,32 @@ public class Ciudad {
             }
             organizarCamiones(currentCamiones);
         }
-        //llevar a los camiones a algun almacen
-        Random random=new Random();
+        //llenar los camiones en el almacen principal
+        Almacen almacen=this.getAlmacenPrincipal();
         for(Camion c:this.camiones){
             Solution s=c.solution;
-            Almacen almacen=this.getAlmacenes().get(random.nextInt(this.getAlmacenes().size()));
+            if(s.currentGLP==c.getCapacidadGLP()){
+                continue;
+            }
+            if(recargarGLP(c,s,almacen.getCoordenada(),c.getCapacidadGLP()-s.currentGLP, distanceGraph)){
+                continue;
+            }
             recargarPetroleo(c,s,almacen.getCoordenada(),distanceGraph);
-            Camino camino=this.AStar(s.currentCoordenada,almacen.getCoordenada(),
-                    s.currentFecha,s.currentPetroleo,s.currentPeso/ Camion.getConsumo(),c.getPenultimaCoordenada());
-            assert camino!=null:"camino de de regreso al almacen principal ha fallado";
-            c.addRuta(new AristaRuta(c,almacen,camino,s.currentGLP,c.getCapacidadGLP(),s.currentPetroleo,Camion.getCapacidadPetroleo()));
-            //usar la fecha fin del camino mas el tiempo de carga
-            s.currentCoordenada=camino.getDestino();
-            s.currentFecha=camino.getFechaFin();
-            s.currentPetroleo=Camion.getCapacidadPetroleo();
-            s.currentGLP=c.getCapacidadGLP();
-            s.currentFecha=new Date(s.currentFecha.getTime()+Camion.getTiempoDeCarga());
-            s.currentPeso= c.getPesoBase()+s.currentGLP*0.5;
+            if(s.currentGLP==c.getCapacidadGLP()){
+                continue;
+            }
+            recargarGLP(c,s,almacen.getCoordenada(),c.getCapacidadGLP()-s.currentGLP, distanceGraph);
+        }
+        //llevar los camiones a un almacen aleatorio
+        int nAlmacenes=this.almacenes.size();
+        ArrayList<Almacen>almacenes=this.getAlmacenes();
+        for (Camion c : camiones) {
+            Solution s=c.solution;
+            Almacen a=almacenes.get(1);
+            if(!recargarGLP(c,s,a.getCoordenada(),0, distanceGraph)){
+                recargarPetroleo(c,s,a.getCoordenada(),distanceGraph);
+                recargarGLP(c,s,a.getCoordenada(),0, distanceGraph);
+            }
         }
     }
 
@@ -449,15 +458,6 @@ public class Ciudad {
         Ciudad ciudad=new Ciudad(this.nombre,this.maxX,this.maxY);
         ciudad.setId(this.id);
         ciudad.camiones=new ArrayList<>(this.camiones);
-        long i=0L;
-        for (Camion camion : camiones) {
-            for (AristaRuta aristaRuta : camion.getRuta()) {
-                PorcionPedido pp=aristaRuta.getPedido();
-                if(pp!=null){
-                    pp.setId(i++);
-                }
-            }
-        }
         ciudad.pedidos=this.pedidos.stream().filter(p->p.getFechaSolicitud().compareTo(fecha)<=0).collect(ArrayList::new,ArrayList::add,ArrayList::addAll);
         ciudad.bloqueos=this.bloqueos.stream().filter(b->b.getFechaFin().compareTo(fecha)>0).collect(ArrayList::new,ArrayList::add,ArrayList::addAll);
         ciudad.almacenes=this.almacenes;

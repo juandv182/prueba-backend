@@ -1,13 +1,10 @@
 package fastglp.controller;
 
-import fastglp.model.Ciudad;
 import fastglp.model.Coordenada;
 import fastglp.model.Pedido;
-import fastglp.service.CiudadService;
 import fastglp.service.PedidoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -25,7 +22,6 @@ import java.util.*;
 public class PedidoController {
     @Autowired
     private PedidoService pedidoService;
-    private CiudadService ciudadService;
 
     @GetMapping(path = "", produces = "application/json")
     public ResponseEntity<List<Pedido>> obtenerPedidos() {
@@ -45,22 +41,9 @@ public class PedidoController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
-    @GetMapping("/porFecha")
-    public ResponseEntity<List<Pedido>> listarPedidosPorFecha(
-            @RequestParam("fechaInicio") @DateTimeFormat(pattern = "yyyy-MM-dd") Date fechaInicio,
-            @RequestParam("fechaFin") @DateTimeFormat(pattern = "yyyy-MM-dd") Date fechaFin,
-            @RequestParam("ciudadId") Long ciudadId) {
 
-        Ciudad ciudad = ciudadService.buscarPorId(ciudadId);
-        if (ciudad == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-
-        List<Pedido> pedidos = pedidoService.listarPedidosPorFecha(fechaInicio, fechaFin, ciudad);
-        return new ResponseEntity<>(pedidos, HttpStatus.OK);
-    }
     @PostMapping(path = "", produces = "application/json", consumes = "application/json")
-    public ResponseEntity<Pedido> guardarPedido(@RequestBody Pedido pedido) {
+    public ResponseEntity<Pedido> guardarCliente(@RequestBody Pedido pedido) {
         log.info("Pedido: " + pedido);
         pedidoService.guardarPedido(pedido);
         return new ResponseEntity<>(pedido, HttpStatus.CREATED);
@@ -77,10 +60,7 @@ public class PedidoController {
         }
 
         // Guardar todos los pedidos en la base de datos
-        for (Pedido pedido : pedidos) {
-            pedidoService.guardarPedido(pedido);
-        }
-
+        pedidoService.guardarPedidos(pedidos);
         return new ResponseEntity<>("Pedidos cargados con éxito", HttpStatus.CREATED);
     }
 
@@ -129,7 +109,7 @@ public class PedidoController {
     }
 
     @PutMapping(path = "/{id}", produces = "application/json", consumes = "application/json")
-    public ResponseEntity<Void> actualizarPedido(@RequestBody Pedido pedido, @PathVariable long id) {
+    public ResponseEntity<Void> actualizarCliente(@RequestBody Pedido pedido, @PathVariable long id) {
         log.info("Pedido: " + pedido);
         var pedidoOptional = pedidoService.obtenerPedidoPorId(id);
         if (pedidoOptional.isPresent()){
@@ -142,7 +122,7 @@ public class PedidoController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<Void> eliminarPedido(@PathVariable long id) {
+    public ResponseEntity<Void> eliminarCliente(@PathVariable long id) {
         var pedidoOptional = pedidoService.obtenerPedidoPorId(id);
         if (pedidoOptional.isPresent()){
             pedidoService.eliminarPedido(id);

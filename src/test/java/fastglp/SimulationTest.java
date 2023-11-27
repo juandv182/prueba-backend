@@ -1,14 +1,19 @@
 package fastglp;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fastglp.model.*;
 import fastglp.service.DistanceGraphService;
 import fastglp.model.DistanceGraph;
 import fastglp.utils.FastGLPSimulation;
 import fastglp.utils.Utils;
+import fastglp.utils.pdf.PdfGenerator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Date;
 
 @SpringBootTest
@@ -18,8 +23,9 @@ public class SimulationTest {
     @Test
     public void testWeekSimulation(){
         Date fechaInicio = Utils.parseFecha("01/04/2023 00");
-        //7 dias
-        Date fechaFin = new Date(fechaInicio.getTime() + 604800000L);
+        //7 dias 604800000L
+        // medio dia 36400000L
+        Date fechaFin = new Date(fechaInicio.getTime() + 36400000L);
         Ciudad ciudad = Utils.createMockCiudad(4,2023);
         FastGLPSimulation simulation = new FastGLPSimulation(ciudad,fechaInicio,fechaFin);
         simulation.setType("7days");
@@ -41,7 +47,16 @@ public class SimulationTest {
         }
         ObjectMapper mapper = new ObjectMapper();
         try {
-            mapper.writeValue(new java.io.File("ACOAlgorithmTest.json"), simulation);
+            simulation.getEstadisticas().setLastSimulation(mapper.writeValueAsString(simulation));
+            String dest = "src/generated/test.pdf";
+            byte[] pdfBytes = PdfGenerator.generatePdf(simulation.getEstadisticas(), dest);
+            mapper.writeValue(new java.io.File("src/generated/ACOAlgorithmTest.json"), simulation);
+            try (FileOutputStream fos = new FileOutputStream(dest)) {
+                fos.write(pdfBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }finally {

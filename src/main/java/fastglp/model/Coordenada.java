@@ -1,6 +1,7 @@
 package fastglp.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import fastglp.utils.Utils;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -37,16 +38,7 @@ public class Coordenada implements Comparable<Coordenada>{
     @Override
     public String toString() {
         //con 1 decimal si es decimal, si es enterio sin dedimales
-        return "("+formatValue(this.x)+","+formatValue(this.y)+")";
-    }
-    private String formatValue(double value) {
-
-
-        if (value == (int) value) {
-            return String.format("%2d",(int) value);
-        } else {
-            return String.format(Locale.US, "%1.1f", value);
-        }
+        return "("+ Utils.formatDouble(this.x)+","+Utils.formatDouble(this.y)+")";
     }
 
     @Override

@@ -66,7 +66,12 @@ public class Camion {
     @JoinColumn(name = "ciudad_id", nullable = false)
     @JsonIgnore
     private Ciudad ciudad;
-
+    @JsonIgnore
+    @Transient
+    private Coordenada penultimaCoordenada;
+    @JsonIgnore
+    @Transient
+    private Coordenada penultimaCoordenadaPrevIteracion;
     public Camion(Camion camion){
         this.id=camion.id;
         this.capacidadGLP=camion.capacidadGLP;
@@ -163,16 +168,6 @@ public class Camion {
         return this.ruta.get(this.ruta.size()-1);
     }
 
-    @JsonIgnore
-    //conseguir la penultima coordenada
-    public Coordenada getPenultimaCoordenada(){
-        if(this.ruta.isEmpty()){
-            return null;
-        }
-        List<Coordenada>coords=this.ruta.get(this.ruta.size()-1).getCamino().getCoordenadas();
-        return coords.size()>=2? coords.get(coords.size()-2):null;
-    }
-
     @Override
     public String toString() {
         return "Camion{" +
@@ -191,6 +186,7 @@ public class Camion {
         Map<Boolean, List<AristaRuta>> partitioned = ruta.stream()
                 .collect(Collectors.partitioningBy(aristaRuta -> Utils.compareDate(aristaRuta.getCamino().getFechaInicio(), fecha) <= 0));
         this.ruta=new ArrayList<>(partitioned.get(true));
+        inicializarPrevCoordenada();
         delete.getAristasRuta().addAll(partitioned.get(false));
         this.ruta=ruta.stream().skip(Math.max(0, ruta.size() - 1)).collect(Collectors.toCollection(ArrayList::new));
         update.getAristasRuta().addAll(this.ruta.stream().map(AristaRuta::copy).toList());
@@ -210,6 +206,8 @@ public class Camion {
             //calcular la ubicacion del camion en el camino
             if(Utils.compareDate(fecha,camino.getFechaFin())<0){
                 Coordenada prevLast=last.getCamino().getDestino();
+                this.penultimaCoordenada=prevLast;
+                this.penultimaCoordenadaPrevIteracion=prevLast;
                 this.ubicacion= last.trunkInUbicacion(fecha);
                 assert this.ubicacion.equals(last.getCamino().getDestino());
                 assert !this.ubicacion.equals(prevLast);
@@ -227,6 +225,22 @@ public class Camion {
 
     }
 
+    private void inicializarPrevCoordenada() {
+        for (int i = this.ruta.size() - 1; i >= 0; i--) {
+            Camino camino = this.ruta.get(i).getCamino();
+            for (int j = camino.getCoordenadas().size() - 1; j >= 0; j--) {
+                Coordenada c = camino.getCoordenadas().get(j);
+                if (c.isInteger()&&!c.equals(this.penultimaCoordenadaPrevIteracion)) {
+                    this.penultimaCoordenadaPrevIteracion = c;
+                    // romper todos los loop
+                    i = -1;
+                    break;
+                }
+            }
+        }
+        this.penultimaCoordenada=this.penultimaCoordenadaPrevIteracion;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -240,6 +254,7 @@ public class Camion {
     }
 
     public void addRuta(AristaRuta aristaRuta) {
+        actualizarPenumtimaCoordenada(aristaRuta);
         AristaRuta last=this.getRutaFinal();
         assert aristaRuta!=null&&(aristaRuta.getAlmacen()!=null||aristaRuta.getPedido()!=null);
         //assert last==null||Utils.compareDate(last.getCamino().getFechaFin(),aristaRuta.getCamino().getFechaInicio())<=0;
@@ -248,6 +263,20 @@ public class Camion {
             return;
         }
         this.getRuta().add(aristaRuta);
+    }
+
+    private void actualizarPenumtimaCoordenada(AristaRuta aristaRuta){
+        List<Coordenada> coordenadas=aristaRuta.getCamino().getCoordenadas();
+        if(coordenadas.size()==1){
+            return;
+        }
+        for (int i = coordenadas.size() - 2; i >= 0; i--) {
+            if(coordenadas.get(i).isInteger()){
+                this.penultimaCoordenada=coordenadas.get(i);
+                return;
+            }
+        }
+
     }
 
     public void clear() {

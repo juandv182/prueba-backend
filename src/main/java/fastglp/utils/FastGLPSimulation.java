@@ -18,7 +18,6 @@ public class FastGLPSimulation {
     private DistanceGraphService distanceGraphService;
     @JsonIgnore
     private final Ciudad ciudad;
-    @Setter
     private String type; //["7days", "collapse"];
     @JsonIgnore
     @Setter
@@ -33,7 +32,8 @@ public class FastGLPSimulation {
     private Date fechaFin;
     @Setter
     private boolean last=false;
-    private final Estadisticas estadisticas;
+    @JsonIgnore
+    private Estadisticas estadisticas;
 
     public FastGLPSimulation(Ciudad ciudad,Date fechaInicio,Date fechaFin) {
         this.ciudad = ciudad;
@@ -48,7 +48,15 @@ public class FastGLPSimulation {
                 p.getFechaSolicitud().compareTo(fechaFin)<=0).collect(ArrayList::new, ArrayList::add, ArrayList::addAll));
         ciudad.setBloqueos(ciudad.getBloqueos().stream().filter(b->b.getFechaInicio().compareTo(fechaInicio)>=0&&
                 b.getFechaInicio().compareTo(fechaFin)<=0).collect(ArrayList::new, ArrayList::add, ArrayList::addAll));
-        this.estadisticas = new Estadisticas(ciudad,fechaInicio);
+    }
+
+    public void setType(String type) {
+        this.type = type;
+        if(type.equals("7days")){
+            this.estadisticas = new Estadisticas(ciudad,fechaInicio,"Simulación semanal");
+        }else if(type.equals("collapse")){
+            this.estadisticas = new Estadisticas(ciudad,fechaInicio,"Simulación colapso");
+        }
     }
 
     public boolean optimize(){
@@ -65,18 +73,12 @@ public class FastGLPSimulation {
             this.last=true;
             return false;
         }
-        ArrayList<Pedido>nuevosPedidos = ciudad.getPedidos().stream().filter(p->
-                p.getPorciones()==null || p.getPorciones().isEmpty() ||
-                        p.getPorciones().stream().anyMatch(pp->pp.getFechaEntrega()==null||pp.getFechaEntrega().after(currentTime)))
-                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-        ciudad.setPedidos(nuevosPedidos);
-        ArrayList<Bloqueo>nuevosBloqueos= ciudad.getBloqueos().stream().filter(b->
-                !b.getFechaFin().before(currentTime))
-                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-        ciudad.setBloqueos(nuevosBloqueos);
-        distanceGraph = distanceGraphService.buildOrGetDistanceGraph(distanceGraph,currentTime,true);
-        ACOAlgorithm.optimizar(ciudad, currentTime, 5, 1, 3, 4, 40, false,
-                distanceGraph);
+        clearUnused();
+        if(!ACOAlgorithm.optimizar(ciudad, currentTime, 5, 1, 3, 10, 40, true,
+                distanceGraph)){
+            this.last=true;
+            return false;
+        }
         estadisticas.decreaseEstadisticas(ciudad.getDelete(),ciudad.getUpdate());
         ciudad.getDelete().clear();
         ciudad.getUpdate().clear();
@@ -87,23 +89,46 @@ public class FastGLPSimulation {
 
 
     private boolean optimizeCollapse() {
-        return false;
+        clearUnused();
+        if(!ACOAlgorithm.optimizar(ciudad, currentTime, 5, 1, 3, 20, 60, true,
+                distanceGraph)){
+            this.last=true;
+            return false;
+        }
+        estadisticas.decreaseEstadisticas(ciudad.getDelete(),ciudad.getUpdate());
+        ciudad.getDelete().clear();
+        ciudad.getUpdate().clear();
+        estadisticas.addEstadisticas(currentTime);
+        currentTime = new Date(currentTime.getTime() + interval);
+        return true;
+    }
+
+    private void clearUnused() {
+        deleteUnused(ciudad, currentTime);
+        distanceGraph = distanceGraphService.buildOrGetDistanceGraph(distanceGraph,currentTime,true);
+    }
+
+    public static void deleteUnused(Ciudad ciudad, Date currentTime) {
+        ArrayList<Pedido> nuevosPedidos = ciudad.getPedidos().stream().filter(p->
+                        p.getPorciones()==null || p.getPorciones().isEmpty() ||
+                                p.getPorciones().stream().anyMatch(pp->pp.getFechaEntrega()==null||pp.getFechaEntrega().after(currentTime)))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        ciudad.setPedidos(nuevosPedidos);
+        ArrayList<Bloqueo>nuevosBloqueos= ciudad.getBloqueos().stream().filter(b->
+                        !b.getFechaFin().before(currentTime))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        ciudad.setBloqueos(nuevosBloqueos);
     }
 
     @JsonProperty("ciudad")
     public Ciudad getCiudad() {
         Ciudad ciudadClear = ciudad.getClearCity(currentTime);
-        long inicio = currentTime.getTime();
-        long fin = currentTime.getTime()+interval;
+        Date inicio = currentTime;
         List<Pedido> pedidos = ciudad.getPedidos().stream().filter(p-> (
-                between(p.getFechaSolicitud().getTime(),inicio,fin)
-                ||p.getPorciones().stream().anyMatch(pp->pp.getFechaEntrega()==null||between(pp.getFechaEntrega().getTime(),inicio,fin))))
+                p.getFechaSolicitud().compareTo(inicio)<=0
+                &&p.getPorciones().stream().anyMatch(pp->pp.getFechaEntrega()==null||pp.getFechaEntrega().compareTo(inicio)>=0)))
                 .toList();
         ciudadClear.setPedidos(pedidos);
         return ciudadClear;
-    }
-
-    private boolean between(long fecha, long fechaInicio, long fechaFin){
-        return fecha>=fechaInicio && fecha<=fechaFin;
     }
 }

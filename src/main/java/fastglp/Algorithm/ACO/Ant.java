@@ -47,7 +47,8 @@ public class Ant {
             ArrayList<Solution>candidatos=new ArrayList<>(solutions);
             int index=unvisited.remove(0);
             fechaMinima=candidatos.stream().map(s->s.currentFecha).min(Date::compareTo).orElse(this.fecha).getTime();
-            Solution mejorCandidato=this.chooseCandidate(candidatos,index,fechaMinima);
+            //Solution mejorCandidato=this.chooseCandidate(candidatos,index,fechaMinima);
+            Solution mejorCandidato=this.chooseBest(candidatos,index,fechaMinima);
             if(mejorCandidato!=null) {
                 boolean res = mejorCandidato.addNode(graph.getPedido(index));
                 assert res;
@@ -63,6 +64,19 @@ public class Ant {
             }
         }
         return solutions;
+    }
+
+    private Solution chooseBest(ArrayList<Solution> candidatos, int index, long fechaMinima) {
+        Solution best=null;
+        double bestScore=0.0;
+        for(Solution candidate:candidatos){
+            double score=scoreEdge(candidate,index,fechaMinima);
+            if(Double.compare(score,bestScore)>0){
+                best=candidate;
+                bestScore=score;
+            }
+        }
+        return best;
     }
 
 

@@ -2,15 +2,11 @@ package fastglp.controller;
 
 import fastglp.Algorithm.ACO.ACOAlgorithm;
 import fastglp.model.*;
-import fastglp.repository.CiudadRepository;
-import fastglp.service.CiudadService;
 import fastglp.service.DistanceGraphService;
 import fastglp.model.DistanceGraph;
 import fastglp.utils.Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.text.SimpleDateFormat;
@@ -25,7 +21,6 @@ public class CiudadController {
 
     @Autowired
     private DistanceGraphService distanceGraphService;
-    private CiudadService ciudadService;
     @GetMapping(path = "", produces = "application/json")
     public Ciudad obtenerCiudad() {
         Date fechaInicio = Utils.parseFecha("01/09/2023 00");
@@ -36,16 +31,7 @@ public class CiudadController {
         }
         return mockCiudad.getClearCity(fechaInicio);
     }
-    @GetMapping(path = "/{id}", produces = "application/json")
-    public ResponseEntity<Ciudad> obtenerCiudadPorId(@PathVariable long id) {
-        log.info("Obtener pedido por ID: " + id);
-        var ciudadOptional = ciudadService.buscarPorId(id);
-        if (ciudadOptional != null) {
-            return new ResponseEntity<>(ciudadOptional, HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
+
     public boolean ejecutar1Dia(){
         Date fechaInicio = Utils.parseFecha("01/09/2023 00");
         //7 dias

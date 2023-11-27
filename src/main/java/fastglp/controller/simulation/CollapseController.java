@@ -1,14 +1,17 @@
 package fastglp.controller.simulation;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import fastglp.model.Ciudad;
-import fastglp.service.DistanceGraphService;
 import fastglp.model.DistanceGraph;
+import fastglp.service.DistanceGraphService;
 import fastglp.utils.Estadisticas;
 import fastglp.utils.FastGLPSimulation;
 import fastglp.utils.Utils;
 import fastglp.utils.pdf.PdfGenerator;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -19,7 +22,7 @@ import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Controller
-public class WeekController {
+public class CollapseController {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
     @Autowired
@@ -29,70 +32,68 @@ public class WeekController {
 
     private FastGLPSimulation createSimulation() {
         Date fechaInicio = Utils.parseFecha("01/04/2023 00");
-        //7 dias
-        Date fechaFin = new Date(fechaInicio.getTime() + 604800000L);
-        Ciudad ciudad = Utils.createMockCiudad(4,2023);
+        //4 - 12 | 8 meses
+        Date fechaFin = new Date(fechaInicio.getTime() + 20736000000L);
+        Ciudad ciudad = Utils.createMockCiudadInRange(4,12,2023);
         FastGLPSimulation simulation = new FastGLPSimulation(ciudad,fechaInicio,fechaFin);
-        simulation.setType("7days");
+        simulation.setType("collapse");
         simulation.setDistanceGraph(new DistanceGraph(ciudad, 6.0));
         simulation.setDistanceGraphService(distanceGraphService);
         return simulation;
     }
 
-    @MessageMapping("/execute-week")
-    public void executeWeek() {
+    @MessageMapping("/execute-collapse")
+    public void executeCollapse() {
         if(isRunning.compareAndSet(false,true)){
             stopRequested.set(false);
             long time = System.currentTimeMillis();
             boolean isLast = false;
             FastGLPSimulation currentsimu = createSimulation();
-            int totalCiclos=0;
+            ObjectMapper mapper = new ObjectMapper();
+            Reporte reporte;
             while (!isLast){
-                totalCiclos++;
                 if (stopRequested.compareAndSet(true, false)) {
-                    System.out.println("Simulacion detenida en: " + (System.currentTimeMillis() - time) + "ms");
+                    System.out.println("Simulacion colapso detenida en: " + (System.currentTimeMillis() - time) + "ms");
                     break;
                 }
-                //currentsimu.optimize();
                 isLast=!currentsimu.optimize();
-                currentsimu.setLast(false);
-                messagingTemplate.convertAndSend("/response/response-week", currentsimu);
-                //System.out.println("Mensaje enviado en " + (System.currentTimeMillis() - time) + "ms");
+                reporte = new Reporte(null,currentsimu.getEstadisticas(),false);
+                messagingTemplate.convertAndSend("/response/response-collapse", reporte);
+                try {
+                    currentsimu.getEstadisticas().setLastSimulation(mapper.writeValueAsString(currentsimu));
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
             }
             System.out.println("Simulacion en: " + (System.currentTimeMillis() - time) + "ms");
-            System.out.println("Total de ciclos: " + totalCiclos);
-            //tiempo promedio
-            System.out.println("Tiempo promedio por ciclo: " + (System.currentTimeMillis() - time)/totalCiclos + "ms");
             //enviando reporte
             System.out.println("Enviando reporte");
             Estadisticas estadisticas = currentsimu.getEstadisticas();
-            currentsimu=null;
-            Reporte reporte = new Reporte(estadisticas);
+            reporte = new Reporte(null,estadisticas,true);
             try {
                 reporte.setReporte(
-                    Utils.convertToUnsignedByteArray(
-                            PdfGenerator.generatePdf(estadisticas, "src/generated/test.pdf")
-                    )
+                        Utils.convertToUnsignedByteArray(
+                                PdfGenerator.generatePdf(estadisticas, "src/generated/test.pdf")
+                        )
                 );
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            messagingTemplate.convertAndSend("/response/response-week", reporte);
+            messagingTemplate.convertAndSend("/response/response-collapse", reporte);
             isRunning.set(false);
         }
     }
     @AllArgsConstructor
-    @Getter @Setter
+    @NoArgsConstructor
+    @Getter
+    @Setter
     private static class Reporte{
         private int[] reporte;
-        private final Estadisticas estadisticas;
-        private final boolean last=true;
-        public Reporte(Estadisticas estadisticas){
-            this.estadisticas=estadisticas;
-        }
+        private Estadisticas estadisticas;
+        private boolean last;
     }
 
-    @MessageMapping("/stop-week")
+    @MessageMapping("/stop-collapse")
     public void stopWeek() {
         stopRequested.set(isRunning.get());
     }

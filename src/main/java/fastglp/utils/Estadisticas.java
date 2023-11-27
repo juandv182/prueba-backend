@@ -26,20 +26,30 @@ public class Estadisticas {
     private Map<String,EstadisticasPorCamion> estadisticasPorCamion;
     private Map<Long,Integer> numRecargasPorAlmacen;
     @JsonIgnore
-    private List<List<Solution>> ultimaPlanificacion;
+    private String lastSimulation;
     @JsonIgnore
     private Ciudad ciudad;
     @JsonIgnore
     private final Set <Long> pedidos=new HashSet<>();
-    
+    private String tipo;
+    @JsonIgnore
+    private Map<String,ArrayList<Integer>> collectionCamionTotalPorcionPedidos;
+    @JsonIgnore
+    private Map<String,ArrayList<Double>> collectionCamionTotalGLP;
+    @JsonIgnore
+    private Map<String,ArrayList<Double>> collectionCamionTotalKmRecorridos;
+    @JsonIgnore
+    private Map<String,ArrayList<Double>> collectionCamionTotalPetroleo;
+
     @JsonProperty("tiempoPromedioDeEntrega")
     public double getTiempoPromedioDeEntrega(){
         return totalTiempoDeEntrega/totalPorcionPedidos/1000/60;
     }
     
-    public Estadisticas(Ciudad ciudad,Date fechaInicio){
+    public Estadisticas(Ciudad ciudad,Date fechaInicio,String tipo){
         this.ciudad=ciudad;
         this.fechaInicio=fechaInicio;
+        this.tipo=tipo;
         clear();
     }
 
@@ -66,6 +76,12 @@ public class Estadisticas {
                             numRecargasPorAlmacen.get(r.getAlmacen().getId()) + 1);
                 }
             }
+        }
+        for (Map.Entry<String,EstadisticasPorCamion> e : estadisticasPorCamion.entrySet()) {
+            collectionCamionTotalPorcionPedidos.get(e.getKey()).add(e.getValue().camionTotalPorcionPedidos);
+            collectionCamionTotalGLP.get(e.getKey()).add(e.getValue().camionTotalGLP);
+            collectionCamionTotalKmRecorridos.get(e.getKey()).add(e.getValue().camionTotalKmRecorridos);
+            collectionCamionTotalPetroleo.get(e.getKey()).add(e.getValue().camionTotalPetroleo);
         }
     }
 
@@ -106,7 +122,15 @@ public class Estadisticas {
                 toMap(Camion::getCodigo, EstadisticasPorCamion::new));
         this.numRecargasPorAlmacen=ciudad.getAlmacenes().stream().collect(
                 toMap(Almacen::getId,a->(Integer) 0));
-        this.ultimaPlanificacion=null;
+        this.lastSimulation=null;
+        this.collectionCamionTotalGLP=ciudad.getCamiones().stream().collect(
+                toMap(Camion::getCodigo,c->new ArrayList<>()));
+        this.collectionCamionTotalKmRecorridos=ciudad.getCamiones().stream().collect(
+                toMap(Camion::getCodigo,c->new ArrayList<>()));
+        this.collectionCamionTotalPetroleo=ciudad.getCamiones().stream().collect(
+                toMap(Camion::getCodigo,c->new ArrayList<>()));
+        this.collectionCamionTotalPorcionPedidos=ciudad.getCamiones().stream().collect(
+                toMap(Camion::getCodigo,c->new ArrayList<>()));
         this.pedidos.clear();
     }
 
