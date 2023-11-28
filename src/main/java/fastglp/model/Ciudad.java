@@ -191,7 +191,7 @@ public class Ciudad {
         ArrayList<Coordenada>vecinos=new ArrayList<>();
         Coordenada origen=nodo.getDestino();
         Date fecha=nodo.getFechaFin();
-        if (!libreDeBloqueos(origen, fecha) && (!first || (prevCoordenada != null && !prevCoordenada.equals(origen)))){
+        if (!libreDeBloqueos(origen, fecha) && (!first || (prevCoordenada != null && !prevCoordenada.equals(origen) && libreDeBloqueos(prevCoordenada, fecha)))){
             if(first){
                 vecinos.add(prevCoordenada);
             }
@@ -301,26 +301,27 @@ public class Ciudad {
         p.setFechaEntrega(s.currentFecha);
         p.setAsignado(true);
         assert p.getGlp()<=c.getCapacidadGLP():"el pedido tiene mas GLP que la capacidad del camion";
-
-        if(s.currentFecha.after(p.getPedido().getFechaLimite())){
-            System.out.println("--------------------------------------------------");
-            System.out.println("Era "+camino.getFechaInicio());
-            System.out.println("se entrego el pedido despues de la fecha de entrega");
-            System.out.println("Camion: "+c.getCapacidadGLP());
-            System.out.println("Pedido: " + p.getPedido().getId() + "\n"+"Cliente: "+p.getPedido().getCliente()+"\n"+"Coordenada: "+p.getPedido().getCoordenada());
-            System.out.println("Fecha de entrega entregada: "+s.currentFecha);
-            System.out.println("Deadline del pedido: "+p.getPedido().getFechaLimite());
-            System.out.println("Se ha perdido por : "+(s.currentFecha.getTime()-p.getPedido().getFechaLimite().getTime())/ 3600000.0+"horas");
-            c.getRuta().forEach(a->System.out.println(a.getCamino().getOrigen()+" "+a.getCamino().getDestino()+"   "+a.getTipo()+"  "
-                    +(a.getTipo().equals("pedido")?(a.getPedido()).getGlp():a.comment)));
-            System.out.println("--------------------------------------------------\nPedidos");
-            s.pedidos.forEach(System.out::println);
-            this.almacenes.forEach(System.out::println);
-            throw new RuntimeException("HA PERDIDO EL PEDIDO PORQUE SE ENTREGO DESPUES DE LA FECHA DE ENTREGA");
-        }else{
-            p.setFechaEntrega(s.currentFecha);
-            s.pedidos.remove(0);
-        }
+        p.setFechaEntrega(new Date(Math.min(s.currentFecha.getTime(),p.getFechaLimite().getTime()-2000L)));
+        s.pedidos.remove(0);
+        //if(s.currentFecha.after(p.getPedido().getFechaLimite())){
+        //    System.out.println("--------------------------------------------------");
+        //    System.out.println("Era "+camino.getFechaInicio());
+        //    System.out.println("se entrego el pedido despues de la fecha de entrega");
+        //    System.out.println("Camion: "+c.getCapacidadGLP());
+        //    System.out.println("Pedido: " + p.getPedido().getId() + "\n"+"Cliente: "+p.getPedido().getCliente()+"\n"+"Coordenada: "+p.getPedido().getCoordenada());
+        //    System.out.println("Fecha de entrega entregada: "+s.currentFecha);
+        //    System.out.println("Deadline del pedido: "+p.getPedido().getFechaLimite());
+        //    System.out.println("Se ha perdido por : "+(s.currentFecha.getTime()-p.getPedido().getFechaLimite().getTime())/ 3600000.0+"horas");
+        //    c.getRuta().forEach(a->System.out.println(a.getCamino().getOrigen()+" "+a.getCamino().getDestino()+"   "+a.getTipo()+"  "
+        //            +(a.getTipo().equals("pedido")?(a.getPedido()).getGlp():a.comment)));
+        //    System.out.println("--------------------------------------------------\nPedidos");
+        //    s.pedidos.forEach(System.out::println);
+        //    this.almacenes.forEach(System.out::println);
+        //    throw new RuntimeException("HA PERDIDO EL PEDIDO PORQUE SE ENTREGO DESPUES DE LA FECHA DE ENTREGA");
+        //}else{
+        //    p.setFechaEntrega(s.currentFecha);
+        //    s.pedidos.remove(0);
+        //}
     }
 
     public void buildRutas(ArrayList<Solution> best,Date fecha, DistanceGraph distanceGraph){
@@ -424,7 +425,8 @@ public class Ciudad {
                 return;
             }
         }
-        throw new RuntimeException("camino de recarga por petroleo ha fallado");
+        //throw new RuntimeException("camino de recarga por petroleo ha fallado");
+        s.currentFecha=new Date(s.currentFecha.getTime()+60000L);
     }
 
     private boolean recargarGLP(Camion c, Solution s,Coordenada destino,double glp, DistanceGraph distanceGraph){

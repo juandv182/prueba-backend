@@ -20,4 +20,4 @@ RUN mvn clean package -DskipTests
 EXPOSE 8080
 
 # Especifica el comando para iniciar la aplicación
-ENTRYPOINT ["java", "-Xmx5000M", "-jar", "/app/target/backend-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-Xmx3600M", "-jar", "/app/target/backend-0.0.1-SNAPSHOT.jar"]

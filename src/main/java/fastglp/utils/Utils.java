@@ -5,9 +5,7 @@ import fastglp.model.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -207,5 +205,52 @@ public class Utils {
     private static long toMillis(String date) {
         String[] parts = date.split("[dhm]");
         return (Long.parseLong(parts[0]) - 1) * 86400000 + Long.parseLong(parts[1]) * 3600000 + Long.parseLong(parts[2]) * 60000;
+    }
+    private static void generarAverias(Ciudad ciudad,Date currentFecha){
+        Random r = new Random();
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(currentFecha);
+        calendar.set(Calendar.HOUR_OF_DAY,8);
+        calendar.set(Calendar.MINUTE,0);
+        calendar.set(Calendar.SECOND,0);
+        if(currentFecha.after(calendar.getTime())){
+            calendar.add(Calendar.HOUR_OF_DAY,8);
+        }
+        if(currentFecha.after(calendar.getTime())){
+            calendar.add(Calendar.HOUR_OF_DAY,8);
+        }
+        Date fechaInicio = new Date(calendar.getTime().getTime()-8*3600000);
+        Date fechaFin = calendar.getTime();
+        for (int i = 0; i < ciudad.getCamiones().size(); i++) {
+            Camion c = ciudad.getCamiones().get(i);
+            //si ya tiene averia no se le puede generar otra
+            if(c.getAverias().stream().anyMatch(a->a.getFechaInicio().before(fechaFin)&&a.getFechaFin().after(fechaInicio))){
+                continue;
+            }
+            for (AristaRuta aristaRuta : c.getRuta()) {
+                if(currentFecha.after(aristaRuta.getCamino().getFechaInicio())
+                        &&currentFecha.before(aristaRuta.getCamino().getFechaFin())
+                        &&r.nextInt(100)<30){
+                    Camino camino = aristaRuta.getCamino();
+                    long intervalo=camino.getFechaFin().getTime()-camino.getFechaInicio().getTime();
+                    long tiempoAveria = (long) (intervalo*r.nextDouble());
+                    Date fechaAveria = new Date(camino.getFechaInicio().getTime()+tiempoAveria);
+                    camino.calcularUbicacion(fechaAveria);
+                    double probs=r.nextDouble();
+                    int tipo=0;
+                    if(probs<0.6){
+                        tipo=1;
+                        break;
+                    } else if (probs<0.9){
+                        tipo=2;
+                    }else{
+                        tipo=3;
+                    }
+                    Averia averia = new Averia(c,tipo,fechaAveria);
+                    c.addAveria(averia);
+                    break;
+                }
+            }
+        }
     }
 }

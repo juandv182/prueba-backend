@@ -33,10 +33,10 @@ public class CiudadController {
     }
 
     public boolean ejecutar1Dia(){
-        Date fechaInicio = Utils.parseFecha("01/09/2023 00");
+        Date fechaInicio = Utils.parseFecha("01/04/2023 00");
         //7 dias
         Date fechaFin = new Date(fechaInicio.getTime() + 86400000L);
-        mockCiudad = Utils.createMockCiudad(9,2023);
+        mockCiudad = Utils.createMockCiudad(4,2023);
         DistanceGraph dg = new DistanceGraph(mockCiudad, 24.0);
         int i=0;
         while (fechaInicio.before(fechaFin)) {

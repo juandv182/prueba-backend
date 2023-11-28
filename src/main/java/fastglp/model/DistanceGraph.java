@@ -16,6 +16,8 @@ import lombok.Setter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -71,20 +73,41 @@ public class DistanceGraph {
                 .flatMap(b -> b.getCoordenadas().stream())
                 .collect(Collectors.toCollection(HashSet::new));
         List<Coordenada> allcoords = getAllCoordenadas();
-        IntStream.range(0, allcoords.size()).parallel().forEach(i -> {
-            for (int j = i + 1; j < allcoords.size(); j++) {
-                Coordenada origen = allcoords.get(i);
-                Coordenada destino = allcoords.get(j);
-                Camino camino = AStar(origen, destino, bloqueos);
-                if (camino != null) {
-                    synchronized(lock) {
-                        distanceMap.put(new KeyPair<>(origen, destino), camino.getDistancia());
-                    }
-                }else {
-                    System.out.println("No se pudo encontrar camino entre " + origen + " y " + destino);
-                }
-            }
-        });
+        ForkJoinPool forkJoinPool = new ForkJoinPool(5); // Crear un ForkJoinPool con 5 hilos
+        try {
+            forkJoinPool.submit(() ->
+                    IntStream.range(0, allcoords.size()).parallel().forEach(i -> {
+                        for (int j = i + 1; j < allcoords.size(); j++) {
+                            Coordenada origen = allcoords.get(i);
+                            Coordenada destino = allcoords.get(j);
+                            Camino camino = AStar(origen, destino, bloqueos);
+                            if (camino != null) {
+                                synchronized(lock) {
+                                    distanceMap.put(new KeyPair<>(origen, destino), camino.getDistancia());
+                                }
+                            } else {
+                                System.out.println("No se pudo encontrar camino entre " + origen + " y " + destino);
+                            }
+                        }
+                    })
+            ).get(); // Espera a que se complete la tarea
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        //IntStream.range(0, allcoords.size()).parallel().forEach(i -> {
+        //    for (int j = i + 1; j < allcoords.size(); j++) {
+        //        Coordenada origen = allcoords.get(i);
+        //        Coordenada destino = allcoords.get(j);
+        //        Camino camino = AStar(origen, destino, bloqueos);
+        //        if (camino != null) {
+        //            synchronized(lock) {
+        //                distanceMap.put(new KeyPair<>(origen, destino), camino.getDistancia());
+        //            }
+        //        }else {
+        //            System.out.println("No se pudo encontrar camino entre " + origen + " y " + destino);
+        //        }
+        //    }
+        //});
         this.build=init;
         System.out.println("Se ha construido el grafo de distancias en " + (System.currentTimeMillis() - start) + " ms");
     }
@@ -179,6 +202,7 @@ public class DistanceGraph {
             TypeReference<HashMap<KeyPair<Coordenada>, Double>> typeRef = new TypeReference<>() {};
             try {
                 String decompressed = Utils.decompress(distancesCompressed);
+                this.distancesCompressed = null;
                 this.distanceMap = mapper.readValue(decompressed, typeRef);
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
@@ -191,7 +215,6 @@ public class DistanceGraph {
     public void setBuild() {
         ObjectMapper mapper = new ObjectMapper();
         try {
-            long init = System.currentTimeMillis();
             this.distancesCompressed = Utils.compress(mapper.writeValueAsString(distanceMap));
             System.out.println("Se genero el JSON con un tamaño de "+this.distancesCompressed.length / 1024.0 / 1024.0+" MB ");
         } catch (JsonProcessingException e) {

@@ -45,6 +45,7 @@ public class CollapseController {
     @MessageMapping("/execute-collapse")
     public void executeCollapse() {
         if(isRunning.compareAndSet(false,true)){
+            System.out.println("Iniciando simulacion colapso");
             stopRequested.set(false);
             long time = System.currentTimeMillis();
             boolean isLast = false;
@@ -56,7 +57,7 @@ public class CollapseController {
                     System.out.println("Simulacion colapso detenida en: " + (System.currentTimeMillis() - time) + "ms");
                     break;
                 }
-                isLast=!currentsimu.optimize();
+                isLast= currentsimu.optimize();
                 reporte = new Reporte(null,currentsimu.getEstadisticas(),false);
                 messagingTemplate.convertAndSend("/response/response-collapse", reporte);
                 try {
@@ -96,5 +97,10 @@ public class CollapseController {
     @MessageMapping("/stop-collapse")
     public void stopWeek() {
         stopRequested.set(isRunning.get());
+    }
+
+    @MessageMapping("/status-collapse")
+    public void statusWeek() {
+        messagingTemplate.convertAndSend("/status/status-collapse", isRunning.get()? "running" : "stopped");
     }
 }

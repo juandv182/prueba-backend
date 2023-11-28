@@ -1,10 +1,14 @@
 package fastglp;
 
 import fastglp.model.Camion;
+import fastglp.model.Ciudad;
 import fastglp.model.Coordenada;
 import fastglp.model.Pedido;
+import fastglp.repository.CiudadRepository;
 import fastglp.repository.PedidoRepository;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,19 +30,23 @@ public class PedidoRepositoryTest {
     @Autowired
     PedidoRepository pedidoRepository;
     @Autowired
+    CiudadRepository ciudadRepository;
+    private static final Logger logger = LoggerFactory.getLogger(PedidoRepositoryTest.class);
+    @Autowired
     private MockMvc mockMvc;
     @Test
     public void registrarPedidoTest(){
         Date date = new Date();
-        System.out.println(date);
-        Pedido pedido = new Pedido(new Coordenada(0, 0),date, 10.2, 20.3, "aaa");
+        Ciudad ciudad = ciudadRepository.getById(1L);
+        Pedido pedido = new Pedido(new Coordenada(0, 0), date, 10.2, 20.3, "aaa");
+        pedido.setCiudad(ciudad); // Asigna la ciudad al pedido
         pedidoRepository.save(pedido);
-        List<Pedido> camionList = pedidoRepository.findAll();
-        assertEquals( 1 , camionList.size());
-
+        List<Pedido> pedidoList = pedidoRepository.findAll();
+        assertEquals(1, pedidoList.size());
     }
     @Test
     public void testCargarPedidosEnMasa() throws Exception {
+        logger.debug("Iniciando testCargarPedidosEnMasa");
         // Crear un MockMultipartFile
         MockMultipartFile file = new MockMultipartFile(
                 "archivo",

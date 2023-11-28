@@ -59,13 +59,14 @@ public class FastGLPSimulation {
         }
     }
 
+    // return true if the simulation is over
     public boolean optimize(){
         if(type.equals("7days")){
-            return optimize7Days();
+            return !optimize7Days();
         }else if(type.equals("collapse")){
-            return optimizeCollapse();
+            return !optimizeCollapse();
         }
-        return false;
+        return true;
     }
 
     private boolean optimize7Days() {
@@ -73,8 +74,17 @@ public class FastGLPSimulation {
             this.last=true;
             return false;
         }
-        clearUnused();
-        if(!ACOAlgorithm.optimizar(ciudad, currentTime, 5, 1, 3, 10, 40, true,
+        ArrayList<Pedido> nuevosPedidos = ciudad.getPedidos().stream().filter(p->
+                        p.getPorciones()==null || p.getPorciones().isEmpty() ||
+                                p.getPorciones().stream().anyMatch(pp->pp.getFechaEntrega()==null||pp.getFechaEntrega().after(currentTime)))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        ciudad.setPedidos(nuevosPedidos);
+        ArrayList<Bloqueo>nuevosBloqueos= ciudad.getBloqueos().stream().filter(b->
+                        !b.getFechaFin().before(currentTime))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        ciudad.setBloqueos(nuevosBloqueos);
+        distanceGraph = distanceGraphService.buildOrGetDistanceGraph(distanceGraph,currentTime,true);
+        if(!ACOAlgorithm.optimizar(ciudad, currentTime, 5, 1, 3, 1, 30, true,
                 distanceGraph)){
             this.last=true;
             return false;
@@ -90,7 +100,8 @@ public class FastGLPSimulation {
 
     private boolean optimizeCollapse() {
         clearUnused();
-        if(!ACOAlgorithm.optimizar(ciudad, currentTime, 5, 1, 3, 20, 60, true,
+        distanceGraph = distanceGraphService.buildOrGetDistanceGraph(distanceGraph,currentTime,false);
+        if(!ACOAlgorithm.optimizar(ciudad, currentTime, 5, 1, 3, 1, 50, true,
                 distanceGraph)){
             this.last=true;
             return false;
@@ -104,8 +115,15 @@ public class FastGLPSimulation {
     }
 
     private void clearUnused() {
-        deleteUnused(ciudad, currentTime);
-        distanceGraph = distanceGraphService.buildOrGetDistanceGraph(distanceGraph,currentTime,true);
+        ArrayList<Pedido> nuevosPedidos = ciudad.getPedidos().stream().filter(p->
+                        p.getPorciones()==null || p.getPorciones().isEmpty() ||
+                                p.getPorciones().stream().anyMatch(pp->pp.getFechaEntrega()==null||pp.getFechaEntrega().after(currentTime)))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        ciudad.setPedidos(nuevosPedidos);
+        ArrayList<Bloqueo>nuevosBloqueos= ciudad.getBloqueos().stream().filter(b->
+                        !b.getFechaFin().before(currentTime))
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+        ciudad.setBloqueos(nuevosBloqueos);
     }
 
     public static void deleteUnused(Ciudad ciudad, Date currentTime) {

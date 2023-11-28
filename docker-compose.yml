@@ -22,9 +22,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 5000M
-        reservations:
-          memory: 2000M
+          memory: 3600M
 
   db:
     image: mysql
@@ -47,8 +45,6 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M
-        reservations:
           memory: 512M
 
 volumes:

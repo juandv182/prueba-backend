@@ -99,7 +99,7 @@ public class Solution {
             updateResources(pedido, dist);
         }
         this.currentCoordenada = pedido.getCoordenada();
-        if(currentFecha.getTime()<=pedido.getFechaLimite().getTime()-300000){
+        if(currentFecha.getTime()<=pedido.getFechaLimite().getTime()-120000){
             return true;
         }else {
             this.valid=false;

@@ -1,10 +1,15 @@
 package fastglp.controller;
 
+import fastglp.model.Ciudad;
 import fastglp.model.Coordenada;
 import fastglp.model.Pedido;
+import fastglp.service.CiudadService;
 import fastglp.service.PedidoService;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -22,6 +27,9 @@ import java.util.*;
 public class PedidoController {
     @Autowired
     private PedidoService pedidoService;
+    @Autowired
+    private CiudadService ciudadService;
+    private static final Logger logger = LoggerFactory.getLogger(PedidoController.class);
 
     @GetMapping(path = "", produces = "application/json")
     public ResponseEntity<List<Pedido>> obtenerPedidos() {
@@ -41,15 +49,29 @@ public class PedidoController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+    @GetMapping("/porFecha")
+    public ResponseEntity<List<Pedido>> listarPedidosPorFecha(
+            @RequestParam("fechaInicio") @DateTimeFormat(pattern = "yyyy-MM-dd") Date fechaInicio,
+            @RequestParam("fechaFin") @DateTimeFormat(pattern = "yyyy-MM-dd") Date fechaFin,
+            @RequestParam("ciudadId") Long ciudadId) {
 
+        Ciudad ciudad = ciudadService.buscarPorId(ciudadId);
+        if (ciudad == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        List<Pedido> pedidos = pedidoService.listarPedidosPorFecha(fechaInicio, fechaFin, ciudad);
+        return new ResponseEntity<>(pedidos, HttpStatus.OK);
+    }
     @PostMapping(path = "", produces = "application/json", consumes = "application/json")
-    public ResponseEntity<Pedido> guardarCliente(@RequestBody Pedido pedido) {
+    public ResponseEntity<Pedido> guardarPedido(@RequestBody Pedido pedido) {
         log.info("Pedido: " + pedido);
         pedidoService.guardarPedido(pedido);
         return new ResponseEntity<>(pedido, HttpStatus.CREATED);
     }
     @PostMapping("/cargarPedidosEnMasa")
     public ResponseEntity<?> cargarPedidosEnMasa(@RequestParam("archivo") MultipartFile archivo) {
+        logger.debug("Entrando al método cargarPedidosEnMasa");
         if (archivo.isEmpty()) {
             return new ResponseEntity<>("El archivo está vacío", HttpStatus.BAD_REQUEST);
         }
@@ -109,7 +131,7 @@ public class PedidoController {
     }
 
     @PutMapping(path = "/{id}", produces = "application/json", consumes = "application/json")
-    public ResponseEntity<Void> actualizarCliente(@RequestBody Pedido pedido, @PathVariable long id) {
+    public ResponseEntity<Void> actualizarPedido(@RequestBody Pedido pedido, @PathVariable long id) {
         log.info("Pedido: " + pedido);
         var pedidoOptional = pedidoService.obtenerPedidoPorId(id);
         if (pedidoOptional.isPresent()){
@@ -122,7 +144,7 @@ public class PedidoController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<Void> eliminarCliente(@PathVariable long id) {
+    public ResponseEntity<Void> eliminarPedido(@PathVariable long id) {
         var pedidoOptional = pedidoService.obtenerPedidoPorId(id);
         if (pedidoOptional.isPresent()){
             pedidoService.eliminarPedido(id);

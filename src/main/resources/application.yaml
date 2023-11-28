@@ -23,6 +23,8 @@ spring:
 logging:
   level:
     org:
+      springframework:
+        security: DEBUG
       hibernate:
         SQL: ERROR
         type:

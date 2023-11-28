@@ -38,7 +38,8 @@ public class Ant {
         ArrayList<Solution> solutions=new ArrayList<>();
 
         for(int i = 0; i< this.vendedores; i++){
-            solutions.add(new Solution(graph,this.fecha,this.ciudad,graph.camiones.get(i),distanceGraph));
+            Camion camion = graph.camiones.get(i);
+            solutions.add(new Solution(graph,camion.getFechaLibre(),this.ciudad,camion,distanceGraph));
         }
         ArrayList<Integer>unvisited= IntStream.range(0, n-vendedores).boxed().collect(Collectors.toCollection(ArrayList::new));
         long fechaMinima;
@@ -68,10 +69,11 @@ public class Ant {
 
     private Solution chooseBest(ArrayList<Solution> candidatos, int index, long fechaMinima) {
         Solution best=null;
-        double bestScore=0.0;
+        double bestScore=1e200;
+        double diference=0.01;
         for(Solution candidate:candidatos){
-            double score=scoreEdge(candidate,index,fechaMinima);
-            if(Double.compare(score,bestScore)>0){
+            double score=evaluateOption(candidate,index,fechaMinima);
+            if(score>=0&&Double.compare(score,bestScore-diference)<0){
                 best=candidate;
                 bestScore=score;
             }
@@ -163,7 +165,8 @@ public class Ant {
         //s1=totalDistance/Camion.getVelocidad()+tiempoDeCarga/3600000.0+5/60.0;
         //double plazo=(pedido.getFechaLimite().getTime()-camino.currentFecha.getTime())/3600000.0;
         long llegada=(long)(totalDistance*3600000/Camion.getVelocidad())+camino.currentFecha.getTime();
-        if(llegada>pedido.getFechaLimite().getTime()-300000) return -1;
+        if(llegada>pedido.getFechaLimite().getTime()-120000) return -1;
+        if(camino.camion.getMantenimientos().stream().anyMatch(m->m.inRange(new Date(llegada)))) return -1;
         //return totalDistance+1/(plazo-s1);
         return (llegada-fechaMinima+1)/360000.0;
     }

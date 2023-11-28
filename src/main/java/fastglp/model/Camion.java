@@ -40,9 +40,13 @@ public class Camion {
     @Embedded
     private Coordenada ubicacion;
     //si esta en viaje, el camino que esta recorriendo
-
+    @OneToMany(mappedBy = "camion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Mantenimiento> mantenimientos;
+    @OneToMany(mappedBy = "camion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Averia> averias;
     @OneToMany(mappedBy = "camion", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AristaRuta> ruta;
+
     @Column(name = "currentPetroleo")
     private double currentPetroleo;
     @Column(name = "pesoBase",nullable = false)
@@ -72,6 +76,9 @@ public class Camion {
     @JsonIgnore
     @Transient
     private Coordenada penultimaCoordenadaPrevIteracion;
+    @JsonIgnore
+    @Transient
+    private Date fechaLibre;
     public Camion(Camion camion){
         this.id=camion.id;
         this.capacidadGLP=camion.capacidadGLP;
@@ -92,6 +99,8 @@ public class Camion {
         this.currentPetroleo= capacidadPetroleo;
         this.pesoBase=pesoBase;
         this.ruta=new ArrayList<>();
+        this.averias=new ArrayList<>();
+        this.mantenimientos=new ArrayList<>();
         switch ((int) capacidadGLP){
             case 25:
                 this.codigo="TA";
@@ -183,8 +192,24 @@ public class Camion {
 
     public void preparar(Date fecha, UpdateOrDeleteListManager delete,
                          UpdateOrDeleteListManager update){
+        Date fechaCopy=fecha;
+        this.fechaLibre=fecha;
+        for (Mantenimiento mantenimiento : this.mantenimientos) {
+            if (mantenimiento.inRange(fecha)) {
+                fechaLibre = mantenimiento.getFechaFin();
+                break;
+            }
+        }
+        for (Averia averia : this.averias) {
+            if (averia.inRange(fecha)) {
+                fechaLibre = averia.getFechaFin();
+                fecha=averia.getFechaInicio();
+                break;
+            }
+        }
+        Date finalFecha = fecha;
         Map<Boolean, List<AristaRuta>> partitioned = ruta.stream()
-                .collect(Collectors.partitioningBy(aristaRuta -> Utils.compareDate(aristaRuta.getCamino().getFechaInicio(), fecha) <= 0));
+                .collect(Collectors.partitioningBy(aristaRuta -> Utils.compareDate(aristaRuta.getCamino().getFechaInicio(), finalFecha) <= 0));
         this.ruta=new ArrayList<>(partitioned.get(true));
         inicializarPrevCoordenada();
         delete.getAristasRuta().addAll(partitioned.get(false));
@@ -222,7 +247,59 @@ public class Camion {
                     distanciaRecorrida*peso/Camion.getConsumo();
         //}
         //System.out.println("No se encontro el camino, CAMION: "+this.id);
+        for (Mantenimiento mantenimiento : this.mantenimientos) {
+            if (mantenimiento.inRange(fechaCopy)) {
+                doMaintenance(mantenimiento,fechaCopy);
+                return;
+            }
+        }
+        for (Averia averia : this.averias) {
+            if (averia.inRange(fechaCopy)) {
+                doRepair(averia,fechaCopy);
+                return;
+            }
+        }
+    }
 
+    private void doRepair(Averia averia, Date fecha) {
+        Camino camino;
+        if(averia.getTipo()==1){
+            camino=ciudad.AStar(this.ubicacion,this.ubicacion.floor(),fecha,
+                    this.currentPetroleo,this.pesoBase/Camion.getConsumo(),
+                    this.penultimaCoordenada);
+            this.addRuta(new AristaRuta(this,averia,camino,this.currentGLP,
+                    this.currentGLP,this.currentPetroleo,this.currentPetroleo));
+        } else if (averia.getTipo()==2||averia.getTipo()==3){
+            if(fecha.before(averia.getFechaMovimiento())){
+                camino=ciudad.AStar(this.ubicacion,ciudad.getAlmacenPrincipal().getCoordenada(),
+                        averia.getFechaMovimiento(),this.currentPetroleo,
+                        this.pesoBase/Camion.getConsumo(),
+                        this.penultimaCoordenada);
+                this.addRuta(new AristaRuta(this,ciudad.getAlmacenPrincipal(),camino,
+                        this.currentGLP,this.capacidadGLP,this.currentPetroleo,
+                        Camion.getCapacidadPetroleo()));
+                this.currentGLP=this.capacidadGLP;
+                this.currentPetroleo=Camion.getCapacidadPetroleo();
+            }else{
+                camino=ciudad.AStar(this.ubicacion,ciudad.getAlmacenPrincipal().getCoordenada(),
+                        fecha,this.currentPetroleo,this.pesoBase/Camion.getConsumo(),
+                        this.penultimaCoordenada);
+                this.addRuta(new AristaRuta(this,ciudad.getAlmacenPrincipal(),camino,
+                        this.currentGLP,this.currentGLP,this.currentPetroleo,
+                        Camion.getCapacidadPetroleo()));
+                this.currentGLP=this.capacidadGLP;
+                this.currentPetroleo=Camion.getCapacidadPetroleo();
+            }
+        }
+    }
+
+    public void doMaintenance(Mantenimiento mantenimiento,Date fecha){
+        Camino camino =ciudad.AStar(this.ubicacion,ciudad.getAlmacenPrincipal().getCoordenada(),fecha,this.currentPetroleo,this.pesoBase/Camion.getConsumo(),
+                this.penultimaCoordenada);
+        this.addRuta(new AristaRuta(this, ciudad.getAlmacenPrincipal(),camino,this.currentGLP,this.getCapacidadGLP(),this.currentPetroleo,Camion.getCapacidadPetroleo()));
+        this.currentGLP=this.getCapacidadGLP();
+        this.currentPetroleo=Camion.getCapacidadPetroleo();
+        this.ubicacion=ciudad.getAlmacenPrincipal().getCoordenada();
     }
 
     private void inicializarPrevCoordenada() {
@@ -254,7 +331,7 @@ public class Camion {
     }
 
     public void addRuta(AristaRuta aristaRuta) {
-        actualizarPenumtimaCoordenada(aristaRuta);
+        actualizarPenultimaCoordenada(aristaRuta);
         AristaRuta last=this.getRutaFinal();
         assert aristaRuta!=null&&(aristaRuta.getAlmacen()!=null||aristaRuta.getPedido()!=null);
         //assert last==null||Utils.compareDate(last.getCamino().getFechaFin(),aristaRuta.getCamino().getFechaInicio())<=0;
@@ -265,7 +342,7 @@ public class Camion {
         this.getRuta().add(aristaRuta);
     }
 
-    private void actualizarPenumtimaCoordenada(AristaRuta aristaRuta){
+    private void actualizarPenultimaCoordenada(AristaRuta aristaRuta){
         List<Coordenada> coordenadas=aristaRuta.getCamino().getCoordenadas();
         if(coordenadas.size()==1){
             return;
@@ -284,4 +361,7 @@ public class Camion {
         this.ruta.forEach(AristaRuta::clear);
     }
 
+    public void addAveria(Averia averia) {
+        this.averias.add(averia);
+    }
 }
